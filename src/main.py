@@ -1,6 +1,6 @@
 """
 Collector Module Main Application
-Kepler power data collection and cost conversion API server
+power data collection and cost conversion API server
 """
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
@@ -11,7 +11,7 @@ from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 import logging
 
-from .kepler_client import KeplerClient
+from .power_client import PowerClient
 from .power_metrics import PowerCalculator, PowerData
 from .data_processor import DataProcessor
 from .config.settings import get_settings
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 # FastAPI app initialization
 app = FastAPI(
     title="kcloud-collector",
-    description="Kepler power data collection and cost conversion API",
+    description="power data collection and cost conversion API",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -42,22 +42,22 @@ app.add_middleware(
 settings = get_settings()
 
 # Global instances
-kepler_client = None
+power_client = None
 power_calculator = None
 data_processor = None
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize on application startup"""
-    global kepler_client, power_calculator, data_processor
+    global power_client, power_calculator, data_processor
     
     logger.info("Starting Collector module...")
     
     try:
         # Initialize Kepler client
-        kepler_client = KeplerClient(
-            prometheus_url=settings.kepler_prometheus_url,
-            metrics_interval=settings.kepler_metrics_interval
+        power_client = KeplerClient(
+            prometheus_url=settings.power_prometheus_url,
+            metrics_interval=settings.power_metrics_interval
         )
         
         # Initialize power calculator
@@ -75,8 +75,8 @@ async def startup_event():
         )
         
         # Test Kepler connection
-        await kepler_client.health_check()
-        logger.info("Kepler connection successful")
+        await power_client.health_check()
+        logger.info("connection successful")
         
         logger.info("Collector module initialization completed")
         
@@ -99,7 +99,7 @@ async def health_check():
     """Health check"""
     try:
         # Check Kepler connection
-        kepler_status = await kepler_client.health_check()
+        power_status = await power_client.health_check()
         
         # Check database connection
         db_status = await data_processor.health_check()
@@ -108,7 +108,7 @@ async def health_check():
             "status": "healthy",
             "timestamp": datetime.utcnow().isoformat(),
             "services": {
-                "kepler": kepler_status,
+                "power": power_status,
                 "database": db_status
             }
         }
@@ -127,7 +127,7 @@ async def get_current_power(
 ):
     """Query real-time power data"""
     try:
-        power_data = await kepler_client.get_container_power_metrics(
+        power_data = await power_client.get_container_power_metrics(
             namespace=namespace,
             workload=workload,
             time_range=time_range
@@ -149,7 +149,7 @@ async def get_container_power(
 ):
     """Query power data by container"""
     try:
-        containers = await kepler_client.get_all_container_metrics(
+        containers = await power_client.get_all_container_metrics(
             namespace=namespace,
             limit=limit
         )
@@ -167,7 +167,7 @@ async def get_container_power(
 async def get_node_power():
     """Query power data by node"""
     try:
-        nodes = await kepler_client.get_node_power_metrics()
+        nodes = await power_client.get_node_power_metrics()
         
         return {
             "nodes": nodes,
@@ -190,7 +190,7 @@ async def get_current_cost(
     """Calculate current operation costs"""
     try:
         # Collect power data
-        power_data = await kepler_client.get_container_power_metrics(
+        power_data = await power_client.get_container_power_metrics(
             namespace=namespace,
             workload=workload,
             time_range="1h"
