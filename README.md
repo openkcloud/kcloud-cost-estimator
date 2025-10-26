@@ -80,6 +80,7 @@ INFLUXDB_BUCKET=power_metrics
 
 ## 📊 API 엔드포인트
 
+### 전력 데이터 수집
 ```bash
 # 실시간 전력 데이터
 GET /power/current?workload=ml-training
@@ -92,6 +93,23 @@ GET /cost/workload/{workload_id}
 # 전력 프로파일
 GET /profile/workload-types
 POST /profile/classify
+```
+
+### 에너지 예측 (NEW)
+```bash
+# 컨테이너 에너지 예측
+POST /predict/energy
+# Request: historical_cpu_cores, container_cpu_request, node metrics
+# Response: predicted_power_watts, confidence_interval
+
+# 모델 보정
+POST /calibrate
+# Request: container_node_data, node_power_data
+# Response: calibrated parameters (slopes, intercepts)
+
+# 보정 설정 조회
+GET /calibration/config
+# Response: current calibration parameters
 ```
 
 ## 🧪 사용 예시
