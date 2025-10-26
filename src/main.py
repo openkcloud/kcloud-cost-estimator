@@ -54,8 +54,8 @@ async def startup_event():
     logger.info("Starting Collector module...")
     
     try:
-        # Initialize Kepler client
-        power_client = KeplerClient(
+        # Initialize power client
+        power_client = PowerClient(
             prometheus_url=settings.power_prometheus_url,
             metrics_interval=settings.power_metrics_interval
         )
@@ -74,7 +74,7 @@ async def startup_event():
             influxdb_bucket=settings.influxdb_bucket
         )
         
-        # Test Kepler connection
+        # Test power connection
         await power_client.health_check()
         logger.info("connection successful")
         
@@ -90,7 +90,7 @@ async def root():
     return {
         "service": "kcloud-collector",
         "version": "1.0.0",
-        "description": "Kepler power data collection and cost conversion",
+        "description": "Power data collection and cost conversion",
         "status": "running"
     }
 
@@ -98,7 +98,7 @@ async def root():
 async def health_check():
     """Health check"""
     try:
-        # Check Kepler connection
+        # Check power connection
         power_status = await power_client.health_check()
         
         # Check database connection

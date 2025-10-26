@@ -1,1 +1,1 @@
-# Collector Module - Kepler Power Data Collection
+# Collector Module - Power Data Collection

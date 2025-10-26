@@ -1,5 +1,5 @@
 """
-Power Client - Kepler metrics collection via Prometheus API
+Power Client - Power metrics collection via Prometheus API
 """
 
 import asyncio
@@ -30,9 +30,9 @@ class PowerClient:
         self.session = None
         
         # Load Power metrics definitions
-        self.metrics = KeplerMetrics()
-        
-        logger.info(f"KeplerClient initialized: {prometheus_url}")
+        self.metrics = PowerMetrics()
+
+        logger.info(f"PowerClient initialized: {prometheus_url}")
     
     async def __aenter__(self):
         """Enter async context manager"""
@@ -141,7 +141,7 @@ class PowerClient:
         """Collect power metrics by container"""
         try:
             # Base query
-            base_query = "power_container_joules_total"
+            base_query = "kepler_container_joules_total"
             
             # Add filter conditions
             filters = []
@@ -197,11 +197,11 @@ class PowerClient:
         try:
             # Collect various power metrics
             queries = {
-                "total": "power_container_joules_total",
-                "cpu": "power_container_cpu_joules_total",
-                "gpu": "power_container_gpu_joules_total",
-                "memory": "power_container_dram_joules_total",
-                "other": "power_container_other_joules_total"
+                "total": "kepler_container_joules_total",
+                "cpu": "kepler_container_core_joules_total",
+                "gpu": "kepler_container_gpu_joules_total",
+                "memory": "kepler_container_dram_joules_total",
+                "other": "kepler_container_other_joules_total"
             }
             
             containers_map = {}
