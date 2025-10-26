@@ -351,6 +351,152 @@ async def get_metrics_summary():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Metrics summary query failed: {str(e)}")
 
+# =============================================================================
+# Energy prediction API
+# =============================================================================
+
+@app.post("/predict/energy")
+async def predict_container_energy(request: Dict):
+    """
+    Predict future energy consumption for a container
+
+    Request body:
+    {
+        "container_name": str,
+        "pod_name": str,
+        "namespace": str,
+        "historical_cpu_cores": [float],  # Time series of CPU usage in cores
+        "container_cpu_request": float,   # CPU request in cores
+        "node_current_util": float,       # Current node CPU utilization %
+        "node_idle_util": float,          # Node idle CPU utilization %
+        "containers_on_node": [           # Other containers on same node
+            {"cpu_request": float, "cpu_util": float}
+        ],
+        "prediction_horizon_minutes": int  # Optional, default 30
+    }
+    """
+    try:
+        # Parse request
+        container_name = request.get("container_name", "")
+        pod_name = request.get("pod_name", "")
+        namespace = request.get("namespace", "")
+        historical_cpu = request.get("historical_cpu_cores", [])
+        container_cpu_request = request.get("container_cpu_request", 1.0)
+        node_current_util = request.get("node_current_util", 0.0)
+        node_idle_util = request.get("node_idle_util", 0.0)
+        containers_on_node = request.get("containers_on_node", [])
+        horizon_minutes = request.get("prediction_horizon_minutes", 30)
+
+        # Create historical data
+        historical_data = HistoricalData(
+            timestamps=[datetime.utcnow() - timedelta(minutes=i) for i in range(len(historical_cpu))],
+            values=historical_cpu,
+            metric_name="cpu_cores"
+        )
+
+        # Predict
+        prediction = energy_predictor.predict_container_energy(
+            container_name=container_name,
+            pod_name=pod_name,
+            namespace=namespace,
+            historical_workload=historical_data,
+            container_cpu_request=container_cpu_request,
+            node_current_util=node_current_util,
+            node_idle_util=node_idle_util,
+            containers_on_node=containers_on_node,
+            prediction_horizon_minutes=horizon_minutes,
+        )
+
+        return {
+            "prediction": {
+                "container_name": prediction.container_name,
+                "pod_name": prediction.pod_name,
+                "namespace": prediction.namespace,
+                "predicted_power_watts": prediction.predicted_power_watts,
+                "prediction_timestamp": prediction.prediction_timestamp.isoformat(),
+                "prediction_horizon_minutes": prediction.prediction_horizon_minutes,
+                "confidence_interval": prediction.confidence_interval,
+            },
+            "status": "success"
+        }
+
+    except Exception as e:
+        logger.error(f"Energy prediction failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Energy prediction failed: {str(e)}")
+
+
+@app.post("/calibrate")
+async def calibrate_models(request: Dict):
+    """
+    Calibrate prediction models using measurement data
+
+    Request body:
+    {
+        "container_node_data": [
+            {"container_cpu_cores": float, "node_cpu_util_percent": float}
+        ],
+        "node_power_data": [
+            {"node_cpu_util_percent": float, "node_power_watts": float}
+        ]
+    }
+    """
+    try:
+        container_node_data = request.get("container_node_data", [])
+        node_power_data = request.get("node_power_data", [])
+
+        if not container_node_data or not node_power_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Both container_node_data and node_power_data required"
+            )
+
+        # Calibrate
+        config = calibration_tool.calibrate_from_prometheus_data(
+            container_node_data=container_node_data,
+            node_power_data=node_power_data
+        )
+
+        # Update predictor with new config
+        energy_predictor.update_calibration(config)
+
+        return {
+            "calibration": {
+                "container_to_node_slope": config.container_to_node_slope,
+                "container_to_node_intercept": config.container_to_node_intercept,
+                "node_util_to_power_slope": config.node_util_to_power_slope,
+                "node_util_to_power_intercept": config.node_util_to_power_intercept,
+                "node_idle_power_watts": config.node_idle_power_watts,
+                "node_max_power_watts": config.node_max_power_watts,
+            },
+            "status": "calibration_successful"
+        }
+
+    except Exception as e:
+        logger.error(f"Calibration failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Calibration failed: {str(e)}")
+
+
+@app.get("/calibration/config")
+async def get_calibration_config():
+    """Get current calibration configuration"""
+    try:
+        config = energy_predictor.config
+
+        return {
+            "calibration": {
+                "container_to_node_slope": config.container_to_node_slope,
+                "container_to_node_intercept": config.container_to_node_intercept,
+                "node_util_to_power_slope": config.node_util_to_power_slope,
+                "node_util_to_power_intercept": config.node_util_to_power_intercept,
+                "node_idle_power_watts": config.node_idle_power_watts,
+                "node_max_power_watts": config.node_max_power_watts,
+            },
+            "note": "Using paper defaults from Dell X3430 unless calibrated"
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get config: {str(e)}")
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
