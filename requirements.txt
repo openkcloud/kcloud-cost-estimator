@@ -19,6 +19,10 @@ scipy>=1.11.0
 influxdb-client>=1.38.0 # Time-series storage
 redis>=4.6.0           # Queue & caching
 
+# Energy Prediction (ARIMA & Machine Learning)
+statsmodels>=0.14.0    # ARIMA time series forecasting
+scikit-learn>=1.3.0    # Linear regression for calibration
+
 # API Framework
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
