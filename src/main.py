@@ -58,8 +58,8 @@ calibration_tool = None
 @app.on_event("startup")
 async def startup_event():
     """Initialize on application startup"""
-    global power_client, power_calculator, data_processor
-    
+    global power_client, power_calculator, data_processor, energy_predictor, calibration_tool
+
     logger.info("Starting Collector module...")
     
     try:
@@ -86,7 +86,15 @@ async def startup_event():
         # Test power connection
         await power_client.health_check()
         logger.info("connection successful")
-        
+
+        # Initialize energy predictor
+        energy_predictor = EnergyPredictor()
+        logger.info("Energy predictor initialized")
+
+        # Initialize calibration tool
+        calibration_tool = CalibrationTool()
+        logger.info("Calibration tool initialized")
+
         logger.info("Collector module initialization completed")
         
     except Exception as e:
