@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from datetime import datetime, timedelta
 import logging
 
@@ -356,7 +356,7 @@ async def get_metrics_summary():
 # =============================================================================
 
 @app.post("/predict/energy")
-async def predict_container_energy(request: Dict):
+async def predict_container_energy(request: Dict[str, Any]):
     """
     Predict future energy consumption for a container
 
@@ -426,7 +426,7 @@ async def predict_container_energy(request: Dict):
 
 
 @app.post("/calibrate")
-async def calibrate_models(request: Dict):
+async def calibrate_models(request: Dict[str, Any]):
     """
     Calibrate prediction models using measurement data
 
