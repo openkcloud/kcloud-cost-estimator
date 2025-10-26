@@ -37,12 +37,12 @@ run-worker: install
 
 # 코드 포맷팅
 format: install-dev
-	$(PYTHON) -m black src/ tests/
-	$(PYTHON) -m isort src/ tests/
+	$(PYTHON) -m black src/ demo/
+	$(PYTHON) -m isort src/ demo/
 
 # 린트 검사
 lint: install-dev
-	$(PYTHON) -m flake8 src/ tests/
+	$(PYTHON) -m flake8 src/ demo/
 	$(PYTHON) -m mypy src/
 
 # Docker 이미지 빌드
