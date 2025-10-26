@@ -25,7 +25,7 @@ install-dev: install
 
 # 테스트 실행
 test: install-dev
-	$(PYTHON) -m pytest tests/ -v --cov=src --cov-report=html
+	$(PYTHON) -m pytest demo/ -v --cov=src --cov-report=html
 
 # 로컬 서버 실행
 run: install
