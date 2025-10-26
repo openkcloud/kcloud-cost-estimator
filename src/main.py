@@ -52,6 +52,8 @@ settings = get_settings()
 power_client = None
 power_calculator = None
 data_processor = None
+energy_predictor = None
+calibration_tool = None
 
 @app.on_event("startup")
 async def startup_event():
