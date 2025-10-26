@@ -12,6 +12,7 @@ GECON 2016: Economics of Grids, Clouds, Systems, and Services, pp. 160-174.
 from .workload_predictor import WorkloadPredictor
 from .energy_predictor import EnergyPredictor
 from .calibration import CalibrationTool
+from .prometheus_helper import PrometheusHelper
 from .models import (
     WorkloadPrediction,
     EnergyPrediction,
@@ -23,6 +24,7 @@ __all__ = [
     "WorkloadPredictor",
     "EnergyPredictor",
     "CalibrationTool",
+    "PrometheusHelper",
     "WorkloadPrediction",
     "EnergyPrediction",
     "CalibrationConfig",
