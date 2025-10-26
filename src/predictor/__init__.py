@@ -9,6 +9,8 @@ Alzamil, I., & Djemame, K. (2017). Energy Prediction for Cloud Workload Patterns
 GECON 2016: Economics of Grids, Clouds, Systems, and Services, pp. 160-174.
 """
 
+__version__ = "1.0.0"
+
 from .workload_predictor import WorkloadPredictor
 from .energy_predictor import EnergyPredictor
 from .calibration import CalibrationTool
