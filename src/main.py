@@ -15,6 +15,13 @@ from .power_client import PowerClient
 from .power_metrics import PowerCalculator, PowerData
 from .data_processor import DataProcessor
 from .config.settings import get_settings
+from .predictor import (
+    EnergyPredictor,
+    WorkloadPredictor,
+    CalibrationTool,
+    CalibrationConfig,
+    HistoricalData,
+)
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO)
