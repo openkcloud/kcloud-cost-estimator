@@ -1,5 +1,5 @@
 # Collector Module Makefile
-.PHONY: install test run docker-build docker-run clean lint format
+.PHONY: install test run docker-build docker-run clean lint format k8s-deploy k8s-delete k8s-status
 
 # Python 가상환경 설정
 VENV_DIR = venv
@@ -7,8 +7,12 @@ PYTHON = $(VENV_DIR)/bin/python
 PIP = $(VENV_DIR)/bin/pip
 
 # Docker 설정
-IMAGE_NAME = kcloud-collector
+IMAGE_NAME = kcloud-cost-estimator
 TAG = latest
+
+# Kubernetes 설정
+K8S_NAMESPACE = kcloud-system
+K8S_DEPLOYMENT_DIR = deployment
 
 # 가상환경 생성 및 의존성 설치
 install: $(VENV_DIR)/bin/activate
@@ -91,3 +95,54 @@ dev-up: install
 dev-down:
 	pkill -f uvicorn || true
 	pkill -f celery || true
+
+# ========================================
+# Kubernetes Deployment
+# ========================================
+
+# K8s 전체 배포
+k8s-deploy:
+	kubectl apply -f $(K8S_DEPLOYMENT_DIR)/namespace.yaml
+	kubectl apply -f $(K8S_DEPLOYMENT_DIR)/rbac.yaml
+	kubectl apply -f $(K8S_DEPLOYMENT_DIR)/configmap.yaml
+	kubectl apply -f $(K8S_DEPLOYMENT_DIR)/deployment.yaml
+	kubectl apply -f $(K8S_DEPLOYMENT_DIR)/service.yaml
+	kubectl apply -f $(K8S_DEPLOYMENT_DIR)/hpa.yaml
+
+# K8s 전체 삭제
+k8s-delete:
+	kubectl delete -f $(K8S_DEPLOYMENT_DIR)/hpa.yaml --ignore-not-found=true
+	kubectl delete -f $(K8S_DEPLOYMENT_DIR)/service.yaml --ignore-not-found=true
+	kubectl delete -f $(K8S_DEPLOYMENT_DIR)/deployment.yaml --ignore-not-found=true
+	kubectl delete -f $(K8S_DEPLOYMENT_DIR)/configmap.yaml --ignore-not-found=true
+	kubectl delete -f $(K8S_DEPLOYMENT_DIR)/rbac.yaml --ignore-not-found=true
+	kubectl delete -f $(K8S_DEPLOYMENT_DIR)/namespace.yaml --ignore-not-found=true
+
+# K8s 상태 확인
+k8s-status:
+	@echo "=== Namespace ==="
+	kubectl get namespace $(K8S_NAMESPACE)
+	@echo "\n=== Deployments ==="
+	kubectl get deployments -n $(K8S_NAMESPACE)
+	@echo "\n=== Pods ==="
+	kubectl get pods -n $(K8S_NAMESPACE)
+	@echo "\n=== Services ==="
+	kubectl get services -n $(K8S_NAMESPACE)
+	@echo "\n=== HPA ==="
+	kubectl get hpa -n $(K8S_NAMESPACE)
+
+# K8s 로그 확인
+k8s-logs:
+	kubectl logs -n $(K8S_NAMESPACE) -l app=kcloud-cost-estimator --tail=100 -f
+
+# K8s 포트 포워딩
+k8s-port-forward:
+	kubectl port-forward -n $(K8S_NAMESPACE) svc/kcloud-cost-estimator 8001:8001
+
+# K8s 재시작
+k8s-restart:
+	kubectl rollout restart deployment/kcloud-cost-estimator -n $(K8S_NAMESPACE)
+	kubectl rollout status deployment/kcloud-cost-estimator -n $(K8S_NAMESPACE)
+
+# Docker 이미지 빌드 후 K8s에 배포
+k8s-build-deploy: docker-build k8s-restart
