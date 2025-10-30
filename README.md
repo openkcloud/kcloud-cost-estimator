@@ -237,12 +237,38 @@ make docker-clean
 
 ### Kubernetes 배포
 ```bash
-# K8s 배포
-kubectl apply -f deployment/collector.yaml
+# 1. Docker 이미지 빌드
+make docker-build
 
-# Health Check
+# 2. K8s 리소스 배포 (네임스페이스, RBAC, ConfigMap, Deployment, Service, HPA)
+make k8s-deploy
+
+# 3. 배포 상태 확인
+make k8s-status
+
+# 4. 포트 포워딩으로 로컬 접근
+make k8s-port-forward
+
+# 5. Health Check
 curl -f http://localhost:8001/health
+
+# 6. 로그 확인
+make k8s-logs
+
+# 7. 재배포 (코드 변경 후)
+make k8s-build-deploy
+
+# 8. 전체 삭제
+make k8s-delete
 ```
+
+#### 배포된 리소스
+- **Namespace**: kcloud-system
+- **ServiceAccount**: RBAC 권한 부여 (노드/파드 메트릭 조회)
+- **ConfigMap**: 환경 변수 설정 (Prometheus URL, 비용 계산 파라미터 등)
+- **Deployment**: 2개 레플리카로 시작 (리소스 제한: 100m-500m CPU, 256Mi-512Mi 메모리)
+- **Service**: ClusterIP로 내부 통신 (8001 포트)
+- **HPA**: CPU/메모리 사용량 기반 오토스케일링 (2-5 레플리카)
 
 ## 프로젝트 구조
 
@@ -262,10 +288,21 @@ kcloud-cost-estimator/
 │   │   └── prometheus_helper.py   # Prometheus 쿼리 헬퍼
 │   └── config/
 │       └── settings.py
+├── config/                        # 설정 파일
+│   ├── __init__.py
+│   └── settings.py                # 환경 변수 설정
 ├── demo/                          # 예제 및 데모 코드
 │   ├── example_prediction.py      # 예측 사용 예제
 │   └── predictor/                 # 예측 모듈 테스트
-├── deployment/                    # K8s 배포 설정
+├── deployment/                    # K8s 배포 매니페스트
+│   ├── namespace.yaml             # kcloud-system 네임스페이스
+│   ├── rbac.yaml                  # ServiceAccount, ClusterRole, ClusterRoleBinding
+│   ├── configmap.yaml             # 환경 변수 설정
+│   ├── deployment.yaml            # Pod 배포 설정
+│   ├── service.yaml               # ClusterIP 서비스
+│   └── hpa.yaml                   # Horizontal Pod Autoscaler
+├── .dockerignore
+├── Dockerfile
 ├── requirements.txt
 ├── Makefile
 └── README.md
