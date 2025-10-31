@@ -5,21 +5,18 @@ power data collection and cost conversion API server
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import uvicorn
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
 
 from .power_client import PowerClient
-from .power_metrics import PowerCalculator, PowerData
+from .power_metrics import PowerCalculator
 from .data_processor import DataProcessor
 from .config.settings import get_settings
 from .predictor import (
     EnergyPredictor,
-    WorkloadPredictor,
     CalibrationTool,
-    CalibrationConfig,
     HistoricalData,
 )
 
@@ -115,9 +112,20 @@ async def root():
 async def health_check():
     """Health check"""
     try:
+        # Guard against uninitialized components
+        if power_client is None or data_processor is None:
+            return {
+                "status": "starting",
+                "timestamp": datetime.utcnow().isoformat(),
+                "services": {
+                    "power": False if power_client is None else "unknown",
+                    "database": False if data_processor is None else "unknown",
+                }
+            }
+
         # Check power connection
         power_status = await power_client.health_check()
-        
+
         # Check database connection
         db_status = await data_processor.health_check()
         
@@ -144,6 +152,8 @@ async def get_current_power(
 ):
     """Query real-time power data"""
     try:
+        if power_client is None:
+            raise HTTPException(status_code=503, detail="Service starting: power client not ready")
         power_data = await power_client.get_container_power_metrics(
             namespace=namespace,
             workload=workload,
@@ -166,6 +176,8 @@ async def get_container_power(
 ):
     """Query power data by container"""
     try:
+        if power_client is None:
+            raise HTTPException(status_code=503, detail="Service starting: power client not ready")
         containers = await power_client.get_all_container_metrics(
             namespace=namespace,
             limit=limit
@@ -184,6 +196,8 @@ async def get_container_power(
 async def get_node_power():
     """Query power data by node"""
     try:
+        if power_client is None:
+            raise HTTPException(status_code=503, detail="Service starting: power client not ready")
         nodes = await power_client.get_node_power_metrics()
         
         return {
@@ -206,6 +220,8 @@ async def get_current_cost(
 ):
     """Calculate current operation costs"""
     try:
+        if power_client is None or power_calculator is None:
+            raise HTTPException(status_code=503, detail="Service starting: dependencies not ready")
         # Collect power data
         power_data = await power_client.get_container_power_metrics(
             namespace=namespace,
@@ -233,6 +249,8 @@ async def get_hourly_cost(
 ):
     """Hourly cost analysis"""
     try:
+        if data_processor is None:
+            raise HTTPException(status_code=503, detail="Service starting: data processor not ready")
         if not start:
             start = datetime.utcnow() - timedelta(hours=24)
         if not end:
@@ -257,6 +275,8 @@ async def get_hourly_cost(
 async def get_workload_cost(workload_id: str):
     """Detailed cost analysis by workload"""
     try:
+        if data_processor is None:
+            raise HTTPException(status_code=503, detail="Service starting: data processor not ready")
         cost_breakdown = await data_processor.get_workload_cost_breakdown(workload_id)
         
         return {
@@ -276,6 +296,8 @@ async def get_workload_cost(workload_id: str):
 async def get_workload_types():
     """Power profile by workload type"""
     try:
+        if data_processor is None:
+            raise HTTPException(status_code=503, detail="Service starting: data processor not ready")
         profiles = await data_processor.get_workload_power_profiles()
         
         return {
@@ -290,6 +312,8 @@ async def get_workload_types():
 async def classify_workload(power_data: Dict):
     """Classify workload power patterns"""
     try:
+        if data_processor is None:
+            raise HTTPException(status_code=503, detail="Service starting: data processor not ready")
         classification = await data_processor.classify_workload_pattern(power_data)
         
         return {
@@ -309,6 +333,8 @@ async def classify_workload(power_data: Dict):
 async def start_collection(background_tasks: BackgroundTasks):
     """Start background data collection"""
     try:
+        if data_processor is None:
+            raise HTTPException(status_code=503, detail="Service starting: data processor not ready")
         background_tasks.add_task(data_processor.start_continuous_collection)
         
         return {
@@ -323,6 +349,8 @@ async def start_collection(background_tasks: BackgroundTasks):
 async def stop_collection():
     """Stop background data collection"""
     try:
+        if data_processor is None:
+            raise HTTPException(status_code=503, detail="Service starting: data processor not ready")
         await data_processor.stop_continuous_collection()
         
         return {
@@ -341,6 +369,8 @@ async def stop_collection():
 async def get_metrics_summary():
     """Collection metrics summary"""
     try:
+        if data_processor is None:
+            raise HTTPException(status_code=503, detail="Service starting: data processor not ready")
         summary = await data_processor.get_collection_summary()
         
         return {
@@ -376,6 +406,8 @@ async def predict_container_energy(request: Dict[str, Any]):
     }
     """
     try:
+        if energy_predictor is None:
+            raise HTTPException(status_code=503, detail="Service starting: predictor not ready")
         # Parse request
         container_name = request.get("container_name", "")
         pod_name = request.get("pod_name", "")
@@ -441,6 +473,8 @@ async def calibrate_models(request: Dict[str, Any]):
     }
     """
     try:
+        if calibration_tool is None or energy_predictor is None:
+            raise HTTPException(status_code=503, detail="Service starting: calibration not ready")
         container_node_data = request.get("container_node_data", [])
         node_power_data = request.get("node_power_data", [])
 
@@ -480,6 +514,8 @@ async def calibrate_models(request: Dict[str, Any]):
 async def get_calibration_config():
     """Get current calibration configuration"""
     try:
+        if energy_predictor is None:
+            raise HTTPException(status_code=503, detail="Service starting: predictor not ready")
         config = energy_predictor.config
 
         return {
