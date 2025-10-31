@@ -21,7 +21,7 @@ from .predictor import (
     HistoricalData,
 )
 
-# Logging configuration
+# Logging configuration (initial default, refined after loading settings)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -34,13 +34,22 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS configuration
+# Load settings
+settings = get_settings()
+
+# Refine logging level from settings
+try:
+    logger.setLevel(getattr(logging, settings.log_level.upper(), logging.INFO))
+except Exception:
+    logger.setLevel(logging.INFO)
+
+# CORS configuration (from settings)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_allow_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=settings.cors_allow_methods,
+    allow_headers=settings.cors_allow_headers,
 )
 
 # Request ID middleware
@@ -50,9 +59,6 @@ async def add_request_id_header(request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
-
-# Load settings
-settings = get_settings()
 
 # Global instances
 power_client = None
@@ -115,6 +121,24 @@ async def root():
         "version": "1.0.0",
         "description": "Power data collection and cost conversion",
         "status": "running"
+    }
+
+
+@app.get("/info")
+async def info():
+    """Service info endpoint"""
+    return {
+        "service": "kcloud-collector",
+        "version": "1.0.0",
+        "config": {
+            "prometheus_url": settings.power_prometheus_url,
+            "metrics_interval": settings.power_metrics_interval,
+            "redis_url": settings.redis_url,
+            "influxdb_url": settings.influxdb_url,
+            "influxdb_bucket": settings.influxdb_bucket,
+            "log_level": settings.log_level,
+            "cors_allow_origins": settings.cors_allow_origins,
+        }
     }
 
 @app.get("/health")

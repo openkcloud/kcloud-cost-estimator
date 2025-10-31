@@ -29,6 +29,10 @@ class Settings:
         # API settings
         self.api_host = os.getenv("API_HOST", "0.0.0.0")
         self.api_port = int(os.getenv("API_PORT", "8001"))
+        # CORS
+        self.cors_allow_origins = [o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "*").split(",")]
+        self.cors_allow_methods = [m.strip() for m in os.getenv("CORS_ALLOW_METHODS", "GET,POST,PUT,DELETE,OPTIONS").split(",")]
+        self.cors_allow_headers = [h.strip() for h in os.getenv("CORS_ALLOW_HEADERS", "Origin,Content-Type,Accept,Authorization,X-Requested-With").split(",")]
 
         # Logging
         self.log_level = os.getenv("LOG_LEVEL", "INFO")
