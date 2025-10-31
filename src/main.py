@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from typing import Optional, Dict, Any
+import uuid
 from datetime import datetime, timedelta
 import logging
 
@@ -41,6 +42,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Request ID middleware
+@app.middleware("http")
+async def add_request_id_header(request, call_next):
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 # Load settings
 settings = get_settings()
@@ -139,6 +148,18 @@ async def health_check():
         }
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Health check failed: {str(e)}")
+
+
+@app.get("/ready")
+async def readiness():
+    if power_client is None or data_processor is None:
+        raise HTTPException(status_code=503, detail="Service starting: dependencies not ready")
+    return {"status": "ready", "timestamp": datetime.utcnow().isoformat()}
+
+
+@app.get("/live")
+async def liveness():
+    return {"status": "alive", "timestamp": datetime.utcnow().isoformat()}
 
 # =============================================================================
 # Power data collection API
